@@ -1,17 +1,73 @@
-import { CheckCircle2, ChevronRight, Home, ShieldX, RotateCcw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle2, Home, ShieldX, Printer } from 'lucide-react';
+import { endSession } from '../api/roleplayApi';
 
 interface ScoreScreenProps {
+  sessionId: string | null;
   onHome: () => void;
 }
 
-export default function ScoreScreen({ onHome }: ScoreScreenProps) {
-  const score = 84;
+export default function ScoreScreen({ sessionId, onHome }: ScoreScreenProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [scoreData, setScoreData] = useState<any>(null);
+
+  useEffect(() => {
+    if (sessionId) {
+      endSession(sessionId)
+        .then(res => {
+          setScoreData(res.data.score);
+          setIsLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to fetch score", err);
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
+    }
+  }, [sessionId]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 z-10 relative h-full">
+        <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+        <p className="mt-6 text-neutral-300 font-medium animate-pulse text-lg tracking-wide">Generating Evaluation Report...</p>
+        <p className="mt-2 text-neutral-500 text-sm text-center max-w-xs">Our AI is analyzing the transcript for protocol adherence, problem solving, empathy, and efficiency.</p>
+      </div>
+    );
+  }
+
+  const overallScore = scoreData?.overallScore || 0;
 
   const rubric = [
-    { title: 'Protocol Adherence', score: 90, comment: 'Verified ID perfectly.', passed: true },
-    { title: 'Problem Solving', score: 85, comment: 'Provided quick workaround.', passed: true },
-    { title: 'Empathy & Tone', score: 60, comment: 'Slightly robotic initially.', passed: false },
-    { title: 'Time Efficiency', score: 100, comment: 'Handled within 2 mins.', passed: true },
+    { 
+      title: 'Protocol Adherence', 
+      score: scoreData?.criteria?.protocolAdherence || 0, 
+      comment: scoreData?.feedback?.protocolAdherence || 'N/A', 
+      passed: (scoreData?.criteria?.protocolAdherence || 0) >= 80 
+    },
+    { 
+      title: 'Problem Solving', 
+      score: scoreData?.criteria?.problemSolving || 0, 
+      comment: scoreData?.feedback?.problemSolving || 'N/A', 
+      passed: (scoreData?.criteria?.problemSolving || 0) >= 80 
+    },
+    { 
+      title: 'Empathy & Tone', 
+      score: scoreData?.criteria?.empathyAndTone || 0, 
+      comment: scoreData?.feedback?.empathyAndTone || 'N/A', 
+      passed: (scoreData?.criteria?.empathyAndTone || 0) >= 80 
+    },
+    { 
+      title: 'Time Efficiency', 
+      score: scoreData?.criteria?.timeEfficiency || 0, 
+      comment: scoreData?.feedback?.timeEfficiency || 'N/A', 
+      passed: (scoreData?.criteria?.timeEfficiency || 0) >= 80 
+    },
   ];
 
   return (
@@ -22,12 +78,11 @@ export default function ScoreScreen({ onHome }: ScoreScreenProps) {
         <div className="text-center space-y-4 relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-indigo-500/20 blur-3xl rounded-full"></div>
           <div className="relative w-40 h-40 mx-auto rounded-full border-[6px] border-indigo-500/20 flex flex-col items-center justify-center">
-            {/* Mock circular progress using SVG could go here, replaced with simple border for UI demo */}
             <svg className="absolute inset-0 w-full h-full -rotate-90">
               <circle cx="74" cy="74" r="71" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-neutral-800" />
-              <circle cx="74" cy="74" r="71" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="446" strokeDashoffset={446 - (446 * score) / 100} className="text-indigo-500 transition-all duration-1000 ease-out" />
+              <circle cx="74" cy="74" r="71" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="446" strokeDashoffset={446 - (446 * overallScore) / 100} className="text-indigo-500 transition-all duration-1000 ease-out" />
             </svg>
-            <span className="text-4xl font-bold tracking-tight text-white">{score}<span className="text-xl text-neutral-400">%</span></span>
+            <span className="text-4xl font-bold tracking-tight text-white">{overallScore}<span className="text-xl text-neutral-400">%</span></span>
             <span className="text-xs text-neutral-400 font-medium tracking-wide">TOTAL SCORE</span>
           </div>
           
@@ -36,6 +91,13 @@ export default function ScoreScreen({ onHome }: ScoreScreenProps) {
             <p className="text-neutral-400 mt-1">Great job! Here's your detailed breakdown.</p>
           </div>
         </div>
+
+        {/* AI Summary */}
+        {scoreData?.summary && (
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4">
+            <p className="text-sm text-indigo-200 leading-relaxed italic">"{scoreData.summary}"</p>
+          </div>
+        )}
 
         {/* Criteria Breakdown */}
         <div className="space-y-3">
@@ -63,10 +125,10 @@ export default function ScoreScreen({ onHome }: ScoreScreenProps) {
 
       </div>
 
-      <div className="mt-auto space-y-3">
-         <button className="w-full flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-3.5 rounded-xl font-medium transition-colors">
-          <RotateCcw className="w-4 h-4" />
-          Review Transcript
+      <div className="mt-auto space-y-3 no-print">
+        <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-3.5 rounded-xl font-medium transition-colors">
+          <Printer className="w-4 h-4" />
+          Download/Print Score Report
         </button>
         <button
           onClick={onHome}

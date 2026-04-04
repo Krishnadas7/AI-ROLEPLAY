@@ -5,6 +5,7 @@ import ScoreScreen from './screens/ScoreScreen';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<'home' | 'roleplay' | 'score'>('home');
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-indigo-500/30 flex items-center justify-center lg:py-8">
@@ -19,8 +20,8 @@ function App() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120%] h-[500px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
 
         {currentScreen === 'home' && <HomeScreen onStart={() => setCurrentScreen('roleplay')} />}
-        {currentScreen === 'roleplay' && <RoleplayScreen onEnd={() => setCurrentScreen('score')} />}
-        {currentScreen === 'score' && <ScoreScreen onHome={() => setCurrentScreen('home')} />}
+        {currentScreen === 'roleplay' && <RoleplayScreen onEnd={(id) => { setActiveSessionId(id || null); setCurrentScreen('score'); }} />}
+        {currentScreen === 'score' && <ScoreScreen sessionId={activeSessionId} onHome={() => setCurrentScreen('home')} />}
       </main>
     </div>
   );

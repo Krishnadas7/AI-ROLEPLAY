@@ -1,7 +1,8 @@
 import { Session } from "../models/SessionModel.js";
 import { Message } from "../models/MessageModel.js";
 import { Scenario } from "../models/ScenarioModel.js";
-import { generateInitialMessage, generateNextMessage } from "../services/aiService.js";
+import { Score } from "../models/ScoreModel.js";
+import { generateInitialMessage, generateNextMessage, evaluateSession } from "../services/aiService.js";
 
 export const startSession = async (req, res) => {
   try {
@@ -131,7 +132,25 @@ export const endSession = async (req, res) => {
       return res.status(404).json({ success: false, message: "Session not found." });
     }
 
-    res.status(200).json({ success: true, data: session });
+    const messages = await Message.find({ sessionId: session._id }).sort({ timestamp: 1 });
+    let scoreDoc = null;
+
+    if (messages.length > 0) {
+      try {
+        const evaluationRes = await evaluateSession(session.scenarioId, messages);
+        scoreDoc = await Score.create({
+          sessionId: session._id,
+          overallScore: evaluationRes.overallScore,
+          criteria: evaluationRes.criteria,
+          feedback: evaluationRes.feedback,
+          summary: evaluationRes.summary
+        });
+      } catch (e) {
+        console.error("Evaluation failed", e);
+      }
+    }
+
+    res.status(200).json({ success: true, data: { session, score: scoreDoc } });
   } catch (error) {
     console.error("End Session Error:", error);
     res.status(500).json({ success: false, message: "Failed to end session." });

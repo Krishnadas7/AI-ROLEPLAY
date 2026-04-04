@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  body, html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    height: auto !important;
+    background-color: #0a0a0a !important;
+    color: white !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Reset container constraints so full content prints */
+  * {
+    overflow: visible !important;
+  }
+  
+  /* Target the main App wrapper specifically */
+  main {
+    background-color: #0a0a0a !important;
+    color: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    height: auto !important;
+    max-height: none !important;
+    display: block !important; /* overrides flex which might mess up pagination */
+  }
+
+  /* Make sure our rubric background is solid and prints nicely */
+  .backdrop-blur-sm {
+    backdrop-filter: none !important;
+    background-color: #171717 !important;
+    page-break-inside: avoid;
+  }
+}

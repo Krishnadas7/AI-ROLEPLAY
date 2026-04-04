@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mic, Square, X, Timer } from 'lucide-react';
-import { startSession, sendMessage, endSession } from '../api/roleplayApi';
+import { startSession, sendMessage } from '../api/roleplayApi';
 
 interface RoleplayScreenProps {
-  onEnd: () => void;
+  onEnd: (sessionId?: string) => void;
 }
 
 interface Message {
@@ -47,7 +47,7 @@ export default function RoleplayScreen({ onEnd }: RoleplayScreenProps) {
 
   // Initialize Speech Recognition
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
@@ -173,10 +173,8 @@ export default function RoleplayScreen({ onEnd }: RoleplayScreenProps) {
           </div>
           <button onClick={() => {
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-            if (sessionId) {
-              endSession(sessionId).catch(console.error);
-            }
-            onEnd();
+            if (recognitionRef.current && isRecording) recognitionRef.current.stop();
+            onEnd(sessionId || undefined);
           }} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors border border-red-500/20">
              <X className="w-5 h-5" />
           </button>
