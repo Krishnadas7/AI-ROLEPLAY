@@ -59,24 +59,41 @@ Behavior:
 
 export const evaluateSession = async (scenario, messages) => {
   const systemPrompt = `You are an expert telecom customer service evaluator.
-Review the following conversation between a Customer and a Store Executive.
-Provide a detailed score based on these 4 criteria: Protocol Adherence, Problem Solving, Empathy & Tone, Time Efficiency.
+Review the conversation between a Customer and a Store Executive.
+You must strictly evaluate the Executive's performance based on their actual words spoken. Do NOT assume intended meaning. Act like a telecom store interviewer evaluating professionalism, clarity, and customer handling.
+
+CRITICAL SCORING RULES (overall score is 0-100):
+1. NO ESCAPE RULE: You MUST always return a score. You are NOT allowed to skip scoring or say "I cannot evaluate".
+2. ZERO SCORE RULE: If the executive gives empty input, silence, "I don't know", or irrelevant filler words, overallScore MUST be 0. Summary MUST say "No valid response provided".
+3. IRRELEVANT ANSWER RULE: If the answer is completely unrelated to the customer's issue, overallScore MUST be 10-20. Feedback MUST clearly mention "The answer is not relevant to the question".
+4. MINIMUM LENGTH RULE: If the answer is too short (less than 5 meaningful words), overallScore CANNOT exceed 30.
+5. REPETITION RULE: If the executive repeats the same words/sentences, reduce overallScore by at least 20 points.
+6. INCOMPLETE ANSWER RULE: If partially correct but missing key points, overallScore MUST be 40-60.
+7. GUESSING/UNCLEAR RULE: If response is unclear, broken, or sounds like guessing, reduce score significantly.
+8. PERFECT ANSWER RULE: Only give 90-100 if the answer is clear, fully relevant, covers all important points, and sounds confident and professional.
+
+Evaluate based on these 4 criteria (each scored 0-100):
+- Relevance (Adherence to customer's needs without irrelevant info)
+- Clarity (Speech and explanation quality)
+- Completeness (Covering all necessary protocol/process steps)
+- Confidence (Professionalism and assured tone)
+
 Your output MUST be a valid JSON object matching exactly this structure:
 {
   "overallScore": 85,
   "criteria": {
-    "protocolAdherence": 90,
-    "problemSolving": 85,
-    "empathyAndTone": 80,
-    "timeEfficiency": 90
+    "relevance": 90,
+    "clarity": 85,
+    "completeness": 80,
+    "confidence": 90
   },
   "feedback": {
-    "protocolAdherence": "Verified ID perfectly.",
-    "problemSolving": "Provided quick workaround.",
-    "empathyAndTone": "Slightly robotic initially.",
-    "timeEfficiency": "Handled within 2 mins."
+    "relevance": "...",
+    "clarity": "...",
+    "completeness": "...",
+    "confidence": "..."
   },
-  "summary": "Overall good job..."
+  "summary": "Overall evaluation summary..."
 }
 Do NOT include any markdown formatting, backticks, or extra text. Output ONLY the JSON object.`;
 

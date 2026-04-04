@@ -14,17 +14,17 @@ const scoreSchema = new mongoose.Schema({
   },
 
   criteria: {
-    protocolAdherence: Number,
-    problemSolving: Number,
-    empathyAndTone: Number,
-    timeEfficiency: Number,
+    relevance: Number,
+    clarity: Number,
+    completeness: Number,
+    confidence: Number,
   },
 
   feedback: {
-    protocolAdherence: String,
-    problemSolving: String,
-    empathyAndTone: String,
-    timeEfficiency: String,
+    relevance: String,
+    clarity: String,
+    completeness: String,
+    confidence: String,
   },
 
   summary: String,

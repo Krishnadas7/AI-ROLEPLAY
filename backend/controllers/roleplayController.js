@@ -138,6 +138,9 @@ export const endSession = async (req, res) => {
     if (messages.length > 0) {
       try {
         const evaluationRes = await evaluateSession(session.scenarioId, messages);
+        console.log("=== AI EVALUATION RAW RESULT ===");
+        console.log(JSON.stringify(evaluationRes, null, 2));
+        console.log("================================");
         scoreDoc = await Score.create({
           sessionId: session._id,
           overallScore: evaluationRes.overallScore,

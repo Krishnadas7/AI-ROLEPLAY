@@ -83,28 +83,28 @@ export default function ScoreScreen({ sessionId, mode, onHome }: ScoreScreenProp
 
   const rubric = [
     { 
-      title: 'Protocol Adherence', 
-      score: scoreData?.criteria?.protocolAdherence || 0, 
-      comment: scoreData?.feedback?.protocolAdherence || 'N/A', 
-      passed: (scoreData?.criteria?.protocolAdherence || 0) >= 80 
+      title: 'Relevance', 
+      score: scoreData?.criteria?.relevance || 0, 
+      comment: scoreData?.feedback?.relevance || 'N/A', 
+      passed: (scoreData?.criteria?.relevance || 0) >= 80 
     },
     { 
-      title: 'Problem Solving', 
-      score: scoreData?.criteria?.problemSolving || 0, 
-      comment: scoreData?.feedback?.problemSolving || 'N/A', 
-      passed: (scoreData?.criteria?.problemSolving || 0) >= 80 
+      title: 'Clarity', 
+      score: scoreData?.criteria?.clarity || 0, 
+      comment: scoreData?.feedback?.clarity || 'N/A', 
+      passed: (scoreData?.criteria?.clarity || 0) >= 80 
     },
     { 
-      title: 'Empathy & Tone', 
-      score: scoreData?.criteria?.empathyAndTone || 0, 
-      comment: scoreData?.feedback?.empathyAndTone || 'N/A', 
-      passed: (scoreData?.criteria?.empathyAndTone || 0) >= 80 
+      title: 'Completeness', 
+      score: scoreData?.criteria?.completeness || 0, 
+      comment: scoreData?.feedback?.completeness || 'N/A', 
+      passed: (scoreData?.criteria?.completeness || 0) >= 80 
     },
     { 
-      title: 'Time Efficiency', 
-      score: scoreData?.criteria?.timeEfficiency || 0, 
-      comment: scoreData?.feedback?.timeEfficiency || 'N/A', 
-      passed: (scoreData?.criteria?.timeEfficiency || 0) >= 80 
+      title: 'Confidence', 
+      score: scoreData?.criteria?.confidence || 0, 
+      comment: scoreData?.feedback?.confidence || 'N/A', 
+      passed: (scoreData?.criteria?.confidence || 0) >= 80 
     },
   ];
 
