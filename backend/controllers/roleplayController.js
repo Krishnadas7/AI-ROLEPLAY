@@ -2,10 +2,33 @@ import { Session } from "../models/SessionModel.js";
 import { Message } from "../models/MessageModel.js";
 import { Scenario } from "../models/ScenarioModel.js";
 import { Score } from "../models/ScoreModel.js";
+import { User } from "../models/UserMode.js";
 import { generateInitialMessage, generateNextMessage, evaluateSession } from "../services/aiService.js";
 
+export const identifyUser = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ success: false, message: "Name and email are required" });
+    }
+    
+    let user = await User.findOne({ email });
+    const isNew = !user;
+    if (!user) {
+      user = await User.create({ name, email });
+    }
+    
+    res.status(200).json({ success: true, isNew, data: user });
+  } catch (error) {
+    console.error("Identify User Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 export const startSession = async (req, res) => {
   try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ success: false, message: "userId is required" });
+
     // Check if the "Mobile Stolen" scenario exists, if not create it
     let scenario = await Scenario.findOne({ title: "Mobile Stolen" });
     if (!scenario) {
@@ -23,6 +46,7 @@ export const startSession = async (req, res) => {
     // Create a new session
     const session = await Session.create({
       scenarioId: scenario._id,
+      userId: userId,
       status: "in_progress",
     });
 
@@ -162,7 +186,13 @@ export const endSession = async (req, res) => {
 
 export const getSessionHistory = async (req, res) => {
   try {
-    const scores = await Score.find()
+    const { userId } = req.query;
+    if (!userId || userId === 'undefined') return res.status(400).json({ success: false, message: "userId is required" });
+
+    const userSessions = await Session.find({ userId });
+    const sessionIds = userSessions.map(s => s._id);
+
+    const scores = await Score.find({ sessionId: { $in: sessionIds } })
       .populate("sessionId")
       .sort({ createdAt: -1 })
       .limit(20);

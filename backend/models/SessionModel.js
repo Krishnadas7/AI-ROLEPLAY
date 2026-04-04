@@ -6,6 +6,11 @@ const sessionSchema = new mongoose.Schema({
     ref: "Scenario",
   },
 
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+
   startedAt: {
     type: Date,
     default: Date.now,

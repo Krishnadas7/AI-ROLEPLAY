@@ -1,7 +1,12 @@
 import apiClient from "../axios/apiClient";
 
-export const startSession = async () => {
-  const response = await apiClient.post("/session/start");
+export const identifyUser = async (name: string, email: string) => {
+  const response = await apiClient.post("/user/identify", { name, email });
+  return response.data;
+};
+
+export const startSession = async (userId: string) => {
+  const response = await apiClient.post("/session/start", { userId });
   return response.data;
 };
 
@@ -15,8 +20,8 @@ export const endSession = async (sessionId: string) => {
   return response.data;
 };
 
-export const getSessionHistory = async () => {
-  const response = await apiClient.get("/session/history");
+export const getSessionHistory = async (userId: string) => {
+  const response = await apiClient.get(`/session/history?userId=${userId}`);
   return response.data;
 };
 

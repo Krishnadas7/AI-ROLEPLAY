@@ -1,18 +1,28 @@
 import { useState, useEffect } from 'react';
-import { User, Phone, ShieldCheck, Play, History, Clock } from 'lucide-react';
-import { getSessionHistory } from '../api/roleplayApi';
+import { User as UserIcon, Phone, ShieldCheck, Play, History, Clock, KeyRound } from 'lucide-react';
+import { getSessionHistory, identifyUser } from '../api/roleplayApi';
 
 interface HomeScreenProps {
+  user: { _id: string; name: string; email: string } | null;
+  onSetUser: (u: any) => void;
   onStart: () => void;
   onViewHistory: (sessionId: string) => void;
 }
 
-export default function HomeScreen({ onStart, onViewHistory }: HomeScreenProps) {
+export default function HomeScreen({ user, onSetUser, onStart, onViewHistory }: HomeScreenProps) {
   const [history, setHistory] = useState<any[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [isIdentifying, setIsIdentifying] = useState(false);
 
   useEffect(() => {
-    getSessionHistory().then(res => {
+    if (!user || !user._id) {
+      setHistory([]);
+      return;
+    }
+    setIsLoadingHistory(true);
+    getSessionHistory(user._id).then(res => {
       if (res.success) {
         setHistory(res.data);
       }
@@ -21,7 +31,22 @@ export default function HomeScreen({ onStart, onViewHistory }: HomeScreenProps) 
       console.error(err);
       setIsLoadingHistory(false);
     });
-  }, []);
+  }, [user]);
+
+  const handleIdentify = async () => {
+    if (!name || !email) return;
+    setIsIdentifying(true);
+    try {
+      const res = await identifyUser(name, email);
+      if (res.success) {
+        onSetUser(res.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsIdentifying(false);
+    }
+  };
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString(undefined, {
@@ -53,7 +78,7 @@ export default function HomeScreen({ onStart, onViewHistory }: HomeScreenProps) 
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-neutral-950/50 border border-neutral-800">
               <div className="bg-purple-500/20 p-2 rounded-xl">
-                <User className="w-5 h-5 text-purple-400" />
+                <UserIcon className="w-5 h-5 text-purple-400" />
               </div>
               <div>
                 <p className="text-sm font-medium text-white">Customer (AI)</p>
@@ -61,14 +86,51 @@ export default function HomeScreen({ onStart, onViewHistory }: HomeScreenProps) 
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-neutral-950/50 border border-neutral-800">
-              <div className="bg-indigo-500/20 p-2 rounded-xl">
-                <Phone className="w-5 h-5 text-indigo-400" />
+            <div className={`p-4 rounded-2xl bg-neutral-950/50 border ${user ? 'border-emerald-500/30' : 'border-neutral-800'}`}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-indigo-500/20 p-2 rounded-xl">
+                  <Phone className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Store Executive</p>
+                  <p className="text-xs text-neutral-400">{user ? 'Identified successfully' : 'Enter details to start'}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-white">Store Executive</p>
-                <p className="text-xs text-neutral-400">You (Candidate)</p>
-              </div>
+
+              {!user ? (
+                <div className="space-y-3 mt-4">
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your Name"
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Your Email"
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                  <button
+                    onClick={handleIdentify}
+                    disabled={isIdentifying || !name || !email}
+                    className="w-full flex justify-center items-center gap-2 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    {isIdentifying ? 'Identifying...' : 'Save & Continue'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center bg-neutral-900 p-3 rounded-xl border border-neutral-800 mt-2">
+                  <div>
+                    <p className="text-sm text-white font-medium">{user.name}</p>
+                    <p className="text-xs text-neutral-500">{user.email}</p>
+                  </div>
+                  <button onClick={() => onSetUser(null)} className="text-xs text-indigo-400 hover:text-indigo-300">Change</button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -76,6 +138,7 @@ export default function HomeScreen({ onStart, onViewHistory }: HomeScreenProps) 
 
       <div className="py-6 flex-none">
         <button
+          disabled={!user}
           onClick={() => {
             // Unlock SpeechSynthesis on mobile by playing a silent utterance on first user interaction
             if ('speechSynthesis' in window) {
@@ -86,10 +149,10 @@ export default function HomeScreen({ onStart, onViewHistory }: HomeScreenProps) 
             }
             onStart();
           }}
-          className="w-full relative group overflow-hidden rounded-2xl p-[1px]"
+          className={`w-full relative group overflow-hidden rounded-2xl p-[1px] ${!user && 'opacity-50 cursor-not-allowed'}`}
         >
-          <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-2xl opacity-70 group-hover:opacity-100 blur-sm transition-opacity duration-300"></span>
-          <div className="relative flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 rounded-2xl text-white font-medium text-lg transition-transform duration-200 group-hover:scale-[0.98]">
+          {user && <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-2xl opacity-70 group-hover:opacity-100 blur-sm transition-opacity duration-300"></span>}
+          <div className={`relative flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-white font-medium text-lg transition-transform duration-200 ${user ? 'bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:scale-[0.98]' : 'bg-neutral-800'}`}>
             Start Roleplay
             <Play className="w-5 h-5 fill-current" />
           </div>
@@ -103,13 +166,17 @@ export default function HomeScreen({ onStart, onViewHistory }: HomeScreenProps) 
         </div>
         
         <div className="space-y-3">
-          {isLoadingHistory ? (
+          {!user ? (
+            <div className="text-center p-6 border border-neutral-800 rounded-2xl bg-neutral-900/30 text-neutral-500 text-sm">
+              Please enter your name and email to view past attempts.
+            </div>
+          ) : isLoadingHistory ? (
             <div className="flex justify-center p-4">
               <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : history.length === 0 ? (
             <div className="text-center p-6 border border-neutral-800 rounded-2xl bg-neutral-900/30 text-neutral-500 text-sm">
-              No past attempts yet. Check back here later!
+              No past attempts found. Try a session!
             </div>
           ) : (
             history.map((attempt: any) => (

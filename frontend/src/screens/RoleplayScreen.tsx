@@ -3,6 +3,8 @@ import { Mic, Square, X, Timer, Volume2 } from 'lucide-react';
 import { startSession, sendMessage } from '../api/roleplayApi';
 
 interface RoleplayScreenProps {
+  userId: string;
+  userName: string;
   onEnd: (sessionId?: string) => void;
 }
 
@@ -12,7 +14,7 @@ interface Message {
   text: string;
 }
 
-export default function RoleplayScreen({ onEnd }: RoleplayScreenProps) {
+export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScreenProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -298,7 +300,7 @@ export default function RoleplayScreen({ onEnd }: RoleplayScreenProps) {
     const initSession = async () => {
       try {
         setIsLoading(true);
-        const res = await startSession();
+        const res = await startSession(userId);
         if (res.success) {
           const sid = res.data.session._id;
           setSessionId(sid);
@@ -345,24 +347,38 @@ export default function RoleplayScreen({ onEnd }: RoleplayScreenProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-neutral-950 z-10 relative">
-      <header className="flex items-center justify-between p-4 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-20">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-            <span className="text-purple-400 font-bold text-sm">RM</span>
+      <header className="flex items-center justify-between p-3 sm:p-4 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-20 overflow-hidden">
+        
+        {/* Customer Info - allowing it to shrink/truncate if needed */}
+        <div className="flex items-center gap-2 min-w-0 mr-2">
+          <div className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+            <span className="text-purple-400 font-bold text-xs sm:text-sm">RM</span>
           </div>
-          <div>
-            <h2 className="text-sm font-medium text-white">Rahul Mehta</h2>
-            <div className="flex items-center gap-1 text-xs text-neutral-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-              Customer AI
+          <div className="truncate">
+            <h2 className="text-sm font-medium text-white truncate">Rahul Mehta</h2>
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-neutral-400 truncate">
+              <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+              <span className="truncate">Customer AI</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 bg-neutral-900 px-3 py-1.5 rounded-lg border border-neutral-800">
-            <Timer className="w-4 h-4 text-neutral-400" />
-            <span className="text-sm font-mono text-neutral-300">{formatTime(seconds)}</span>
+        {/* Right tools - prevented from shrinking to ensure button isn't lost */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          
+          {/* Executive Name */}
+          <div className="hidden min-[360px]:flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 py-1 pl-1 pr-2 rounded-full relative" title={userName || 'You'}>
+            <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 shrink-0">
+               <span className="text-indigo-400 font-bold text-[10px] leading-none">{userName ? userName.charAt(0).toUpperCase() : 'Y'}</span>
+            </div>
+            <span className="text-[10px] sm:text-xs font-medium text-neutral-300 truncate max-w-[45px] sm:max-w-[70px]">
+              {userName ? userName.split(' ')[0] : 'You'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1 sm:gap-1.5 bg-neutral-900 px-2 sm:px-3 py-1.5 rounded-lg border border-neutral-800">
+            <Timer className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-400 shrink-0" />
+            <span className="text-xs sm:text-sm font-mono text-neutral-300 tracking-tight">{formatTime(seconds)}</span>
           </div>
           <button
             onClick={() => {

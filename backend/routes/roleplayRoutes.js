@@ -1,8 +1,9 @@
 import express from "express";
-import { startSession, sendMessage, endSession, getSessionHistory, getSessionDetails } from "../controllers/roleplayController.js";
+import { identifyUser, startSession, sendMessage, endSession, getSessionHistory, getSessionDetails } from "../controllers/roleplayController.js";
 
 const router = express.Router();
 
+router.post("/user/identify", identifyUser);
 router.post("/session/start", startSession);
 router.post("/session/end", endSession);
 router.post("/message", sendMessage);
