@@ -14,3 +14,13 @@ export const endSession = async (sessionId: string) => {
   const response = await apiClient.post("/session/end", { sessionId });
   return response.data;
 };
+
+export const getSessionHistory = async () => {
+  const response = await apiClient.get("/session/history");
+  return response.data;
+};
+
+export const getSessionDetails = async (sessionId: string) => {
+  const response = await apiClient.get(`/session/${sessionId}/details`);
+  return response.data;
+};

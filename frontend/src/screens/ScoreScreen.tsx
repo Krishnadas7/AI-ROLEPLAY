@@ -1,42 +1,80 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Home, ShieldX, Printer } from 'lucide-react';
-import { endSession } from '../api/roleplayApi';
+import { CheckCircle2, Home, ShieldX, Printer, MessageSquareText, ArrowLeft, Volume2 } from 'lucide-react';
+import { endSession, getSessionDetails } from '../api/roleplayApi';
 
 interface ScoreScreenProps {
   sessionId: string | null;
+  mode: 'end' | 'history';
   onHome: () => void;
 }
 
-export default function ScoreScreen({ sessionId, onHome }: ScoreScreenProps) {
+export default function ScoreScreen({ sessionId, mode, onHome }: ScoreScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [scoreData, setScoreData] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
     if (sessionId) {
-      endSession(sessionId)
-        .then(res => {
-          setScoreData(res.data.score);
-          setIsLoading(false);
-        })
-        .catch(err => {
-          console.error("Failed to fetch score", err);
-          setIsLoading(false);
-        });
+      setIsLoading(true);
+      if (mode === 'end') {
+        endSession(sessionId)
+          .then(res => {
+            setScoreData(res.data.score);
+            setMessages(res.data.messages || []);
+            setIsLoading(false);
+          })
+          .catch(err => {
+            console.error("Failed to end session", err);
+            setIsLoading(false);
+          });
+      } else {
+        getSessionDetails(sessionId)
+          .then(res => {
+            setScoreData(res.data.score);
+            setMessages(res.data.messages || []);
+            setIsLoading(false);
+          })
+          .catch(err => {
+            console.error("Failed to fetch session details", err);
+            setIsLoading(false);
+          });
+      }
     } else {
       setIsLoading(false);
     }
-  }, [sessionId]);
+  }, [sessionId, mode]);
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const playAudio = (text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      
+      // Attempt to pick a more natural voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoice = voices.find(v => v.lang.includes('en-') && !v.name.includes('Google'));
+      if (englishVoice) {
+        utterance.voice = englishVoice;
+      }
+      
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 z-10 relative h-full">
         <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
-        <p className="mt-6 text-neutral-300 font-medium animate-pulse text-lg tracking-wide">Generating Evaluation Report...</p>
-        <p className="mt-2 text-neutral-500 text-sm text-center max-w-xs">Our AI is analyzing the transcript for protocol adherence, problem solving, empathy, and efficiency.</p>
+        <p className="mt-6 text-neutral-300 font-medium animate-pulse text-lg tracking-wide">
+          {mode === 'end' ? 'Generating Evaluation Report...' : 'Loading Past Attempt...'}
+        </p>
+        {mode === 'end' && (
+          <p className="mt-2 text-neutral-500 text-sm text-center max-w-xs">Our AI is analyzing the transcript for protocol adherence, problem solving, empathy, and efficiency.</p>
+        )}
       </div>
     );
   }
@@ -72,12 +110,19 @@ export default function ScoreScreen({ sessionId, onHome }: ScoreScreenProps) {
 
   return (
     <div className="flex-1 flex flex-col p-6 z-10 relative overflow-y-auto">
+      <button 
+        onClick={onHome} 
+        className="absolute top-4 left-4 p-2 bg-neutral-900/80 border border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-full transition-colors z-20 no-print backdrop-blur-sm"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </button>
+
       <div className="flex-1 flex flex-col gap-8 mt-8 pb-10">
         
         {/* Score Header */}
         <div className="text-center space-y-4 relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-indigo-500/20 blur-3xl rounded-full"></div>
-          <div className="relative w-40 h-40 mx-auto rounded-full border-[6px] border-indigo-500/20 flex flex-col items-center justify-center">
+          <div className="relative w-40 h-40 mx-auto rounded-full border-[6px] border-indigo-500/20 flex flex-col items-center justify-center bg-neutral-950/50">
             <svg className="absolute inset-0 w-full h-full -rotate-90">
               <circle cx="74" cy="74" r="71" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-neutral-800" />
               <circle cx="74" cy="74" r="71" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="446" strokeDashoffset={446 - (446 * overallScore) / 100} className="text-indigo-500 transition-all duration-1000 ease-out" />
@@ -88,13 +133,13 @@ export default function ScoreScreen({ sessionId, onHome }: ScoreScreenProps) {
           
           <div>
             <h2 className="text-2xl font-semibold text-white">Evaluation Complete</h2>
-            <p className="text-neutral-400 mt-1">Great job! Here's your detailed breakdown.</p>
+            <p className="text-neutral-400 mt-1">Here is the detailed breakdown.</p>
           </div>
         </div>
 
         {/* AI Summary */}
         {scoreData?.summary && (
-          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4">
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 page-break-inside-avoid">
             <p className="text-sm text-indigo-200 leading-relaxed italic">"{scoreData.summary}"</p>
           </div>
         )}
@@ -122,6 +167,39 @@ export default function ScoreScreen({ sessionId, onHome }: ScoreScreenProps) {
             </div>
           ))}
         </div>
+
+        {/* Chat Transcript */}
+        {messages.length > 0 && (
+          <div className="space-y-4 pt-4 border-t border-neutral-800/80 mt-4">
+            <div className="flex items-center gap-2">
+              <MessageSquareText className="w-5 h-5 text-indigo-400" />
+              <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider px-1">Session Transcript</h3>
+            </div>
+            <div className="space-y-4 p-4 rounded-2xl bg-neutral-900/40 border border-neutral-800">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[90%] p-3 rounded-2xl group ${
+                    msg.sender === 'user' 
+                      ? 'bg-indigo-600/20 text-indigo-100 border border-indigo-500/30 rounded-tr-sm' 
+                      : 'bg-neutral-800 text-neutral-200 border border-neutral-700 rounded-tl-sm'
+                  }`}>
+                    <div className="flex items-center justify-between gap-4 mb-1">
+                      <p className="text-xs font-semibold opacity-75">{msg.sender === 'user' ? 'You' : 'Rahul Mehta'} {msg.sender !== 'user' && '(AI)'}</p>
+                      <button 
+                        onClick={() => playAudio(msg.text)}
+                        className={`p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity no-print ${msg.sender === 'user' ? 'bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300' : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-300'}`}
+                        title="Play Audio"
+                      >
+                        <Volume2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <p className="text-sm leading-relaxed">{msg.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
 

@@ -150,9 +150,48 @@ export const endSession = async (req, res) => {
       }
     }
 
-    res.status(200).json({ success: true, data: { session, score: scoreDoc } });
+    res.status(200).json({ success: true, data: { session, score: scoreDoc, messages } });
   } catch (error) {
     console.error("End Session Error:", error);
     res.status(500).json({ success: false, message: "Failed to end session." });
+  }
+};
+
+export const getSessionHistory = async (req, res) => {
+  try {
+    const scores = await Score.find()
+      .populate("sessionId")
+      .sort({ createdAt: -1 })
+      .limit(20);
+    
+    const history = scores.map(s => ({
+      id: s._id,
+      overallScore: s.overallScore,
+      createdAt: s.createdAt,
+      status: s.sessionId?.status || "completed",
+      sessionId: s.sessionId?._id || null
+    }));
+
+    res.status(200).json({ success: true, data: history });
+  } catch (error) {
+    console.error("Get Session History Error:", error);
+    res.status(500).json({ success: false, message: "Failed to get session history." });
+  }
+};
+
+export const getSessionDetails = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const score = await Score.findOne({ sessionId });
+    const messages = await Message.find({ sessionId }).sort({ timestamp: 1 });
+    
+    if (!score) {
+      return res.status(404).json({ success: false, message: "Score not found" });
+    }
+
+    res.status(200).json({ success: true, data: { score, messages } });
+  } catch (error) {
+    console.error("Get Session Details Error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch details" });
   }
 };
