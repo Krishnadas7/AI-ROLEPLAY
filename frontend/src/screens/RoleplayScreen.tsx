@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mic, Square, X, Timer } from 'lucide-react';
-import { startSession, sendMessage } from '../api/roleplayApi';
+import { startSession, sendMessage, endSession } from '../api/roleplayApi';
 
 interface RoleplayScreenProps {
   onEnd: () => void;
@@ -173,6 +173,9 @@ export default function RoleplayScreen({ onEnd }: RoleplayScreenProps) {
           </div>
           <button onClick={() => {
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            if (sessionId) {
+              endSession(sessionId).catch(console.error);
+            }
             onEnd();
           }} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors border border-red-500/20">
              <X className="w-5 h-5" />

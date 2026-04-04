@@ -112,3 +112,28 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to send message." });
   }
 };
+
+export const endSession = async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: "sessionId is required." });
+    }
+
+    const session = await Session.findByIdAndUpdate(
+      sessionId,
+      { status: "completed", endedAt: new Date() },
+      { new: true }
+    );
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: "Session not found." });
+    }
+
+    res.status(200).json({ success: true, data: session });
+  } catch (error) {
+    console.error("End Session Error:", error);
+    res.status(500).json({ success: false, message: "Failed to end session." });
+  }
+};
