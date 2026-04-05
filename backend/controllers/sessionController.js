@@ -2,7 +2,9 @@ import { Session } from "../models/SessionModel.js";
 import { Message } from "../models/MessageModel.js";
 import { Scenario } from "../models/ScenarioModel.js";
 import { Score } from "../models/ScoreModel.js";
-import { generateInitialMessage, evaluateSession } from "../services/aiService.js";
+import { generateInitialMessage,
+         evaluateSession 
+  } from "../services/aiService.js";
 
 export const startSession = async (req, res) => {
   try {
