@@ -8,19 +8,23 @@ const anthropic = new Anthropic({
 });
 
 export const generateInitialMessage = async (scenario) => {
-  const systemPrompt = `You are Rahul Mehta, a telecom customer.
+  const firstMessageText = scenario.title.includes("Network")
+    ? "My network is very bad, calls are dropping."
+    : "My mobile is stolen what will I do?";
+
+  const systemPrompt = `You are ${scenario.aiPersona?.name || 'a customer'}, a telecom customer.
 
 Context:
-- Your phone was stolen this morning
-- You need a SIM replacement urgently
+- ${scenario.description}
 
 Behavior:
-- Ask questions about process, time, and documents
-- Show slight frustration but stay polite
+- Ask questions about process and resolution
+- Show ${scenario.aiPersona?.tone || 'slight frustration'}
 - Do NOT guide the store executive
 - Respond naturally like a real customer
+- IMPORTANT: ONLY output the spoken words. Do NOT include any stage directions, asterisks, brackets, or tone descriptions (e.g. *speaks in a concerned tone*).
 
-Please begin the roleplay by saying exactly "My mobile is stolen what will I do?". Keep your first message strictly related to this.`;
+Please begin the roleplay by saying exactly "${firstMessageText}". Keep your first message strictly related to this.`;
 
   const msg = await anthropic.messages.create({
     model: process.env.AI_MODEL,
@@ -35,17 +39,17 @@ Please begin the roleplay by saying exactly "My mobile is stolen what will I do?
 };
 
 export const generateNextMessage = async (scenario, claudeMessages) => {
-  const systemPrompt = `You are Rahul Mehta, a telecom customer.
+  const systemPrompt = `You are ${scenario.aiPersona?.name || 'a customer'}, a telecom customer.
 
 Context:
-- Your phone was stolen this morning
-- You need a SIM replacement urgently
+- ${scenario.description}
 
 Behavior:
-- Ask questions about process, time, and documents
-- Show slight frustration but stay polite
+- Ask questions about process and resolution
+- Show ${scenario.aiPersona?.tone || 'slight frustration'}
 - Do NOT guide the store executive
-- Respond naturally like a real customer`;
+- Respond naturally like a real customer
+- IMPORTANT: ONLY output the spoken words. Do NOT include any stage directions, asterisks, brackets, or tone descriptions (e.g. *speaks in a concerned tone*).`;
 
   const msg = await anthropic.messages.create({
     model: process.env.AI_MODEL,
@@ -58,63 +62,79 @@ Behavior:
 };
 
 export const evaluateSession = async (scenario, messages) => {
-  const systemPrompt = `You are an expert telecom customer service evaluator.
-Review the conversation between a Customer and a Store Executive.
-You must strictly evaluate the Executive's performance based on their actual words spoken. Do NOT assume intended meaning. Act like a telecom store interviewer evaluating professionalism, clarity, and customer handling.
+  // Separate executive messages so evaluator cannot confuse AI customer's knowledge
+  // with the executive's actual responses
+  const executiveMessages = messages
+    .filter(m => m.sender === 'user')
+    .map((m, i) => `Executive Reply ${i + 1}: "${m.text}"`)
+    .join('\n');
 
-CRITICAL SCORING RULES (overall score is 0-100):
-1. NO ESCAPE RULE: You MUST always return a score. You are NOT allowed to skip scoring or say "I cannot evaluate".
-2. ZERO SCORE RULE: If the executive gives empty input, silence, "I don't know", or irrelevant filler words, overallScore MUST be 0. Summary MUST say "No valid response provided".
-3. IRRELEVANT ANSWER RULE: If the answer is completely unrelated to the customer's issue, overallScore MUST be 10-20. Feedback MUST clearly mention "The answer is not relevant to the question".
-4. MINIMUM LENGTH RULE: If the answer is too short (less than 5 meaningful words), overallScore CANNOT exceed 30.
-5. REPETITION RULE: If the executive repeats the same words/sentences, reduce overallScore by at least 20 points.
-6. INCOMPLETE ANSWER RULE: If partially correct but missing key points, overallScore MUST be 40-60.
-7. GUESSING/UNCLEAR RULE: If response is unclear, broken, or sounds like guessing, reduce score significantly.
-8. PERFECT ANSWER RULE: Only give 90-100 if the answer is clear, fully relevant, covers all important points, and sounds confident and professional.
+  const customerMessages = messages
+    .filter(m => m.sender === 'ai')
+    .map((m, i) => `Customer Message ${i + 1}: "${m.text}"`)
+    .join('\n');
 
-Evaluate based on these 4 criteria (each scored 0-100):
-- Relevance (Adherence to customer's needs without irrelevant info)
-- Clarity (Speech and explanation quality)
-- Completeness (Covering all necessary protocol/process steps)
-- Confidence (Professionalism and assured tone)
+  const systemPrompt = `You are a strict telecom training evaluator. Output ONLY valid JSON — no preamble, no markdown, no explanation. Start with { and end with }.
 
-Your output MUST be a valid JSON object matching exactly this structure:
-{
-  "overallScore": 85,
-  "criteria": {
-    "relevance": 90,
-    "clarity": 85,
-    "completeness": 80,
-    "confidence": 90
-  },
-  "feedback": {
-    "relevance": "...",
-    "clarity": "...",
-    "completeness": "...",
-    "confidence": "..."
-  },
-  "summary": "Overall evaluation summary..."
-}
-Do NOT include any markdown formatting, backticks, or extra text. Output ONLY the JSON object.`;
+You are evaluating a STORE EXECUTIVE's performance during a customer service roleplay.
 
-  const conversationText = messages.map(m => {
-    const roleName = m.sender === 'user' ? 'Executive' : 'Customer';
-    return `${roleName}: ${m.text}`;
-  }).join('\n\n');
+IMPORTANT: You must ONLY evaluate what the EXECUTIVE said. Do NOT give credit for information mentioned by the Customer. The Customer's messages are provided only for context.
+
+CUSTOMER MESSAGES (context only — do NOT score these):
+${customerMessages || '(none)'}
+
+EXECUTIVE MESSAGES (score ONLY these):
+${executiveMessages || '(none — executive gave no response)'}
+
+STRICT SCORING RULES — violations are non-negotiable:
+1. If the executive said NOTHING or gave only filler words ("hi", "hello", "ok", "hmm") → overallScore MUST be 0-5
+2. If the executive's reply is completely unrelated to the customer's issue → overallScore MUST be 5-15
+3. If the executive reply is less than 10 meaningful words → overallScore CANNOT exceed 25
+4. If the executive repeated the customer's words back without adding value → overallScore CANNOT exceed 20
+5. If partially helpful but missing key steps/protocol → overallScore 40-60
+6. If mostly correct but not fully professional or complete → overallScore 60-75
+7. ONLY give 85-100 if the executive clearly identified the issue, explained steps correctly, and spoke professionally
+
+You are STRICT. You do NOT assume the executive knows something just because the customer mentioned it.
+
+Output EXACTLY this JSON (no other text):
+{"overallScore":0,"criteria":{"relevance":0,"clarity":0,"completeness":0,"confidence":0},"feedback":{"relevance":"...","clarity":"...","completeness":"...","confidence":"..."},"summary":"..."}`;
 
   const msg = await anthropic.messages.create({
     model: process.env.AI_MODEL || "claude-3-haiku-20240307",
-    max_tokens: 500,
+    max_tokens: 800,
     system: systemPrompt,
     messages: [
-      { role: "user", content: `Please evaluate this conversation:\n\n${conversationText}` }
+      { role: "user", content: "Evaluate the executive's performance now." }
     ],
   });
 
-  try {
-    return JSON.parse(msg.content[0].text.replace(/```json/g, '').replace(/```/g, '').trim());
-  } catch (e) {
-    console.error("Failed to parse JSON", e);
-    throw new Error("Invalid AI JSON format");
-  }
+  const raw = msg.content[0].text;
+  console.log('=== AI EVALUATION RAW RESULT ===');
+  console.log(raw);
+  console.log('================================');
+
+  // Robust JSON extractor — handles preamble text, markdown fences, etc.
+  const extractJSON = (text) => {
+    let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+    try { return JSON.parse(cleaned); } catch (_) {}
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      try { return JSON.parse(match[0]); } catch (_) {}
+    }
+    console.error('[Evaluation] Could not parse AI response as JSON, using fallback score');
+    return {
+      overallScore: 0,
+      criteria: { relevance: 0, clarity: 0, completeness: 0, confidence: 0 },
+      feedback: {
+        relevance: 'Evaluation could not be completed.',
+        clarity: 'Evaluation could not be completed.',
+        completeness: 'Evaluation could not be completed.',
+        confidence: 'Evaluation could not be completed.',
+      },
+      summary: 'The AI evaluator returned an unexpected format. Please retry the session.'
+    };
+  };
+
+  return extractJSON(raw);
 };

@@ -1,12 +1,13 @@
 import apiClient from "../axios/apiClient";
 
 export const identifyUser = async (name: string, email: string) => {
+  
   const response = await apiClient.post("/user/identify", { name, email });
   return response.data;
 };
 
-export const startSession = async (userId: string) => {
-  const response = await apiClient.post("/session/start", { userId });
+export const startSession = async (userId: string, scenarioId: string) => {
+  const response = await apiClient.post("/session/start", { userId, scenarioId });
   return response.data;
 };
 

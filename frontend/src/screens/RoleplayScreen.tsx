@@ -5,6 +5,7 @@ import { startSession, sendMessage } from '../api/roleplayApi';
 interface RoleplayScreenProps {
   userId: string;
   userName: string;
+  scenarioId: string;
   onEnd: (sessionId?: string) => void;
 }
 
@@ -14,7 +15,7 @@ interface Message {
   text: string;
 }
 
-export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScreenProps) {
+export default function RoleplayScreen({ userId, userName, scenarioId, onEnd }: RoleplayScreenProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -162,7 +163,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
     if (!('speechSynthesis' in window)) return;
     pendingSpeechRef.current = null;
     setPendingSpeech(null);
-    try { audioCtxRef.current?.resume(); } catch (_) {}
+    try { audioCtxRef.current?.resume(); } catch (_) { }
     if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
       window.speechSynthesis.cancel();
       setTimeout(() => window.speechSynthesis.speak(buildUtterance(text)), 100);
@@ -173,7 +174,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
 
   /** Resume AudioContext on mic press (in case it was suspended by the OS) */
   const unlockAudio = () => {
-    try { audioCtxRef.current?.resume(); } catch (_) {}
+    try { audioCtxRef.current?.resume(); } catch (_) { }
   };
 
   useEffect(() => {
@@ -259,7 +260,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
       if (event.error === 'no-speech') {
         // On Android no-speech fires when silent — restart if still holding
         if (isHoldingRef.current) {
-          try { recognition.start(); } catch (_) {}
+          try { recognition.start(); } catch (_) { }
         }
         return;
       }
@@ -274,7 +275,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
       console.log('[Speech] onend. isHolding=', isHoldingRef.current, 'transcript=', finalTranscriptRef.current);
       if (isHoldingRef.current) {
         // User still holding — restart to keep capturing speech
-        try { recognition.start(); } catch (_) {}
+        try { recognition.start(); } catch (_) { }
       } else {
         // User released — send everything accumulated
         setIsRecording(false);
@@ -289,7 +290,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
     };
 
     recognitionRef.current = recognition;
-    return () => { try { recognition.abort(); } catch (_) {} };
+    return () => { try { recognition.abort(); } catch (_) { } };
   }, [doSendMessage]);
 
   // Start Session — guarded to prevent React StrictMode double-fire
@@ -300,7 +301,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
     const initSession = async () => {
       try {
         setIsLoading(true);
-        const res = await startSession(userId);
+        const res = await startSession(userId, scenarioId);
         if (res.success) {
           const sid = res.data.session._id;
           setSessionId(sid);
@@ -327,7 +328,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
     finalTranscriptRef.current = '';
     isHoldingRef.current = true;
     setIsRecording(true);
-    try { recognitionRef.current?.start(); } catch (_) {}
+    try { recognitionRef.current?.start(); } catch (_) { }
   };
 
   const stopRecording = () => {
@@ -336,7 +337,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
     isHoldingRef.current = false;
     setIsRecording(false);
     // stop() will trigger onend, which sends the final accumulated transcript
-    try { recognitionRef.current?.stop(); } catch (_) {}
+    try { recognitionRef.current?.stop(); } catch (_) { }
   };
 
   const formatTime = (secs: number) => {
@@ -348,14 +349,18 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
   return (
     <div className="flex-1 flex flex-col h-full bg-neutral-950 z-10 relative">
       <header className="flex items-center justify-between p-3 sm:p-4 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-20 overflow-hidden">
-        
+
         {/* Customer Info - allowing it to shrink/truncate if needed */}
         <div className="flex items-center gap-2 min-w-0 mr-2">
           <div className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-            <span className="text-purple-400 font-bold text-xs sm:text-sm">RM</span>
+            <span className="text-purple-400 font-bold text-xs sm:text-sm">
+              {scenarioId === 'network_issue' ? 'PN' : 'RM'}
+            </span>
           </div>
           <div className="truncate">
-            <h2 className="text-sm font-medium text-white truncate">Rahul Mehta</h2>
+            <h2 className="text-sm font-medium text-white truncate">
+              {scenarioId === 'network_issue' ? 'Priya Nair' : 'Rahul Mehta'}
+            </h2>
             <div className="flex items-center gap-1 text-[10px] sm:text-xs text-neutral-400 truncate">
               <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
               <span className="truncate">Customer AI</span>
@@ -365,11 +370,11 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
 
         {/* Right tools - prevented from shrinking to ensure button isn't lost */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          
+
           {/* Executive Name */}
           <div className="hidden min-[360px]:flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 py-1 pl-1 pr-2 rounded-full relative" title={userName || 'You'}>
             <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 shrink-0">
-               <span className="text-indigo-400 font-bold text-[10px] leading-none">{userName ? userName.charAt(0).toUpperCase() : 'Y'}</span>
+              <span className="text-indigo-400 font-bold text-[10px] leading-none">{userName ? userName.charAt(0).toUpperCase() : 'Y'}</span>
             </div>
             <span className="text-[10px] sm:text-xs font-medium text-neutral-300 truncate max-w-[45px] sm:max-w-[70px]">
               {userName ? userName.split(' ')[0] : 'You'}
@@ -384,7 +389,7 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
             onClick={() => {
               if ('speechSynthesis' in window) window.speechSynthesis.cancel();
               isHoldingRef.current = false;
-              try { recognitionRef.current?.abort(); } catch (_) {}
+              try { recognitionRef.current?.abort(); } catch (_) { }
               onEnd(sessionId || undefined);
             }}
             className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors border border-red-500/20"
@@ -398,11 +403,10 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-32 scroll-smooth">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] p-4 rounded-2xl ${
-              msg.role === 'user'
+            <div className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
                 ? 'bg-indigo-600 text-white rounded-tr-sm shadow-indigo-900/20'
                 : 'bg-neutral-800 text-neutral-100 rounded-tl-sm shadow-black/20'
-            } shadow-lg`}>
+              } shadow-lg`}>
               <p className="text-sm leading-relaxed">{msg.text}</p>
               {msg.role === 'ai' && (
                 <button
@@ -432,74 +436,73 @@ export default function RoleplayScreen({ userId, userName, onEnd }: RoleplayScre
       {/* Bottom Panel */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-neutral-950 via-neutral-950 to-transparent">
         <div className="flex flex-col items-center gap-4 max-w-sm mx-auto w-full">
-        {micPermission === 'denied' ? (
-          /* Permission denied — show a clear in-app guided banner */
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-              <Mic className="w-6 h-6 text-red-400" />
-            </div>
-            <p className="text-sm font-semibold text-red-400">Microphone Access Denied</p>
-            <p className="text-xs text-neutral-500 max-w-xs leading-relaxed">
-              This app needs microphone access to record your voice.
-              Please tap the lock /&#8203;info icon in your browser's address bar and allow microphone, then reload the page.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-xl font-medium transition-colors"
-            >
-              Reload &amp; Try Again
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className={`h-8 flex items-center justify-center gap-1 transition-opacity duration-300 ${isRecording ? 'opacity-100' : 'opacity-0'}`}>
-              {[1,2,3,4,5,4,3,2,1].map((h, i) => (
-                <div key={i} className="w-1.5 bg-indigo-500 rounded-full animate-pulse" style={{ height: `${h * 4}px` }} />
-              ))}
-            </div>
-
-            {/* Tap to Hear — shown when auto-play is blocked (iOS Safari) */}
-            {pendingSpeech && !isRecording && (
+          {micPermission === 'denied' ? (
+            /* Permission denied — show a clear in-app guided banner */
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                <Mic className="w-6 h-6 text-red-400" />
+              </div>
+              <p className="text-sm font-semibold text-red-400">Microphone Access Denied</p>
+              <p className="text-xs text-neutral-500 max-w-xs leading-relaxed">
+                This app needs microphone access to record your voice.
+                Please tap the lock /&#8203;info icon in your browser's address bar and allow microphone, then reload the page.
+              </p>
               <button
-                onClick={() => playPendingSpeech(pendingSpeech)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 text-sm font-medium rounded-full animate-pulse hover:bg-indigo-600/30 active:scale-95 transition-all"
+                onClick={() => window.location.reload()}
+                className="mt-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-xl font-medium transition-colors"
               >
-                <Volume2 className="w-4 h-4" />
-                Tap to hear AI reply
+                Reload &amp; Try Again
               </button>
-            )}
+            </div>
+          ) : (
+            <>
+              <div className={`h-8 flex items-center justify-center gap-1 transition-opacity duration-300 ${isRecording ? 'opacity-100' : 'opacity-0'}`}>
+                {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((h, i) => (
+                  <div key={i} className="w-1.5 bg-indigo-500 rounded-full animate-pulse" style={{ height: `${h * 4}px` }} />
+                ))}
+              </div>
 
-            <button
-              disabled={isLoading || !sessionId || micPermission === 'unknown'}
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture(e.pointerId);
-                unlockAudio();
-                startRecording();
-              }}
-              onPointerUp={stopRecording}
-              onPointerCancel={stopRecording}
-              onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              style={{
-                touchAction: 'none',
-                WebkitUserSelect: 'none',
-                userSelect: 'none',
-                WebkitTouchCallout: 'none',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-              className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 select-none ${
-                isRecording
-                  ? 'bg-indigo-600 shadow-[0_0_30px_rgba(79,70,229,0.5)] scale-95'
-                  : 'bg-neutral-800 hover:bg-neutral-700 shadow-xl border border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed'
-              }`}
-            >
-              {isRecording ? <Square className="w-8 h-8 text-white fill-current" /> : <Mic className="w-8 h-8 text-indigo-400" />}
-            </button>
+              {/* Tap to Hear — shown when auto-play is blocked (iOS Safari) */}
+              {pendingSpeech && !isRecording && (
+                <button
+                  onClick={() => playPendingSpeech(pendingSpeech)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 text-sm font-medium rounded-full animate-pulse hover:bg-indigo-600/30 active:scale-95 transition-all"
+                >
+                  <Volume2 className="w-4 h-4" />
+                  Tap to hear AI reply
+                </button>
+              )}
 
-            <p className="text-xs font-medium text-neutral-500 uppercase tracking-widest text-center">
-              {micPermission === 'unknown' ? 'Requesting mic...' : isRecording ? 'Release to Send' : 'Push to Talk'}
-            </p>
-          </>
-        )}
+              <button
+                disabled={isLoading || !sessionId || micPermission === 'unknown'}
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  unlockAudio();
+                  startRecording();
+                }}
+                onPointerUp={stopRecording}
+                onPointerCancel={stopRecording}
+                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                style={{
+                  touchAction: 'none',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 select-none ${isRecording
+                    ? 'bg-indigo-600 shadow-[0_0_30px_rgba(79,70,229,0.5)] scale-95'
+                    : 'bg-neutral-800 hover:bg-neutral-700 shadow-xl border border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                  }`}
+              >
+                {isRecording ? <Square className="w-8 h-8 text-white fill-current" /> : <Mic className="w-8 h-8 text-indigo-400" />}
+              </button>
+
+              <p className="text-xs font-medium text-neutral-500 uppercase tracking-widest text-center">
+                {micPermission === 'unknown' ? 'Requesting mic...' : isRecording ? 'Release to Send' : 'Push to Talk'}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
