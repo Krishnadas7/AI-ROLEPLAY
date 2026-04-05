@@ -5,11 +5,15 @@ import { Score } from "../models/ScoreModel.js";
 import { generateInitialMessage,
          evaluateSession 
   } from "../services/aiService.js";
+import { startSessionSchema, endSessionSchema, getSessionHistorySchema, getSessionDetailsSchema } from "../validations/index.js";
 
-export const startSession = async (req, res) => {
+export const startSession = async (req, res, next) => {
   try {
-    const { userId, scenarioId } = req.body;
-    if (!userId) return res.status(400).json({ success: false, message: "userId is required" });
+    const parsed = startSessionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, message: parsed.error.errors[0].message });
+    }
+    const { userId, scenarioId } = parsed.data;
 
     // Based on the scenarioId sent, create/fetch the scenario.
     let titleToSearch = "Mobile Stolen";
@@ -61,18 +65,17 @@ export const startSession = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Start Session Error:", error);
-    res.status(500).json({ success: false, error: error });
+    next(error);
   }
 };
 
-export const endSession = async (req, res) => {
+export const endSession = async (req, res, next) => {
   try {
-    const { sessionId } = req.body;
-
-    if (!sessionId) {
-      return res.status(400).json({ success: false, message: "sessionId is required." });
+    const parsed = endSessionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, message: parsed.error.errors[0].message });
     }
+    const { sessionId } = parsed.data;
 
     const session = await Session.findByIdAndUpdate(
       sessionId,
@@ -107,15 +110,17 @@ export const endSession = async (req, res) => {
 
     res.status(200).json({ success: true, data: { session, score: scoreDoc, messages } });
   } catch (error) {
-    console.error("End Session Error:", error);
-    res.status(500).json({ success: false, message: "Failed to end session." });
+    next(error);
   }
 };
 
-export const getSessionHistory = async (req, res) => {
+export const getSessionHistory = async (req, res, next) => {
   try {
-    const { userId } = req.query;
-    if (!userId || userId === 'undefined') return res.status(400).json({ success: false, message: "userId is required" });
+    const parsed = getSessionHistorySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, message: parsed.error.errors[0].message });
+    }
+    const { userId } = parsed.data;
 
     const userSessions = await Session.find({ userId });
     const sessionIds = userSessions.map(s => s._id);
@@ -141,14 +146,17 @@ export const getSessionHistory = async (req, res) => {
 
     res.status(200).json({ success: true, data: history });
   } catch (error) {
-    console.error("Get Session History Error:", error);
-    res.status(500).json({ success: false, message: "Failed to get session history." });
+    next(error);
   }
 };
 
-export const getSessionDetails = async (req, res) => {
+export const getSessionDetails = async (req, res, next) => {
   try {
-    const { sessionId } = req.params;
+    const parsed = getSessionDetailsSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, message: parsed.error.errors[0].message });
+    }
+    const { sessionId } = parsed.data;
     const score = await Score.findOne({ sessionId });
     const messages = await Message.find({ sessionId }).sort({ timestamp: 1 });
     
@@ -158,7 +166,6 @@ export const getSessionDetails = async (req, res) => {
 
     res.status(200).json({ success: true, data: { score, messages } });
   } catch (error) {
-    console.error("Get Session Details Error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch details" });
+    next(error);
   }
 };

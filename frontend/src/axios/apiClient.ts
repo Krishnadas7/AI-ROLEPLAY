@@ -18,10 +18,17 @@ apiClient.interceptors.request.use(
 // Response interceptor - Handle errors globally
 apiClient.interceptors.response.use(
   (response) => {
-    
     return response;
   },
   (error) => {
+    if (error.response) {
+      const status = error.response.status;
+      if (status === 404) {
+        window.dispatchEvent(new CustomEvent('app-error', { detail: { type: '404' } }));
+      } else if (status >= 500) {
+        window.dispatchEvent(new CustomEvent('app-error', { detail: { type: '500' } }));
+      }
+    }
     return Promise.reject(error);
   }
 );

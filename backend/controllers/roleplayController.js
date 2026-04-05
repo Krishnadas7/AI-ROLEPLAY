@@ -1,14 +1,14 @@
 import { Message } from "../models/MessageModel.js";
 import { generateNextMessage } from "../services/aiService.js";
 import { Session } from "../models/SessionModel.js";
-
-export const sendMessage = async (req, res) => {
+import { sendMessageSchema } from "../validations/index.js";
+export const sendMessage = async (req, res, next) => {
   try {
-    const { sessionId, text } = req.body;
-
-    if (!sessionId || !text) {
-      return res.status(400).json({ success: false, message: "sessionId and text are required." });
+    const parsed = sendMessageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, message: parsed.error.errors[0].message });
     }
+    const { sessionId, text } = parsed.data;
 
     // Find the session and scenario
     const session = await Session.findById(sessionId).populate("scenarioId");
@@ -63,8 +63,7 @@ export const sendMessage = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Send Message Error:", error);
-    res.status(500).json({ success: false, message: "Failed to send message." });
+    next(error);
   }
 };
 

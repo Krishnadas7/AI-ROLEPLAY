@@ -1,11 +1,13 @@
 import { User } from "../models/UserMode.js";
+import { identifyUserSchema } from "../validations/index.js";
 
-export const identifyUser = async (req, res) => {
+export const identifyUser = async (req, res, next) => {
   try {
-    const { name, email } = req.body;
-    if (!name || !email) {
-      return res.status(400).json({ success: false, message: "Name and email are required" });
+    const parsed = identifyUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, message: parsed.error.errors[0].message });
     }
+    const { name, email } = parsed.data;
     
     let user = await User.findOne({ email });
     const isNew = !user;
@@ -15,7 +17,6 @@ export const identifyUser = async (req, res) => {
     
     res.status(200).json({ success: true, isNew, data: user });
   } catch (error) {
-    console.error("Identify User Error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    next(error);
   }
 };
